@@ -1,25 +1,44 @@
-import logo from './logo.svg';
-import './App.css';
+import "./App.css";
 
-function App() {
+import { useState } from "react";
+
+const Task = ({ title }) => {
+  return <li>{title}</li>;
+};
+
+const App = () => {
+  const [text, setText] = useState("");
+  const [taskList, setTaskList] = useState([]);
+
+  const handleChange = (e) => {
+    setText(e.target.value);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      setTaskList((prevTaskList) => {
+        return [{ id: crypto.randomUUID(), title: text }, ...prevTaskList];
+      });
+      setText("");
+    }
+  };
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <ul>
+        {taskList.map((task) => (
+          <Task key={task.id} title={task.title} />
+        ))}
+      </ul>
+      <input
+        type="text"
+        value={text}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        placeholder="+ Add a Task..."
+      />
     </div>
   );
-}
+};
 
 export default App;
