@@ -1,6 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-void main() {
+import 'package:mobile/Tasks/task_item.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive for Flutter
+  await Hive.initFlutter();
+  Hive.registerAdapter(TodoItemAdapter());
+
+  // Open a box (like a table)
+  await Hive.openBox<TaskItem>('taskBox');
+
   runApp(const App());
 }
 
@@ -15,8 +27,23 @@ class _AppState extends State<App> {
   final TextEditingController controller = TextEditingController();
   final List<String> tasks = [];
 
+  late Box<TaskItem>? box;
+
+  @override
+  void initState() {
+    super.initState();
+    openBox();
+  }
+
+  Future<void> openBox() async {
+    box = await Hive.openBox<TaskItem>('todoBox'); // open here
+    setState(() {}); // trigger rebuild
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (box == null) return const CircularProgressIndicator();
+
     return MaterialApp(
       theme: ThemeData.dark(),
       home: Scaffold(
@@ -26,16 +53,53 @@ class _AppState extends State<App> {
           children: [
             // Task list takes remaining space
             Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.all(8),
-                itemCount: tasks.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    margin: EdgeInsets.symmetric(vertical: 4),
-                    child: TaskItem(task: tasks[index]),
-                  );
-                },
+              child: ListView(
+                children: box!.values
+                    .map(
+                      (item) => ListTile(
+                        title: Text(item.title),
+                        trailing: Checkbox(
+                          value: item.isDone,
+                          onChanged: (value) {
+                            item.isDone = value!;
+                            item.save();
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
+              // ValueListenableBuilder(
+              //   valueListenable: box.listenable(),
+              //   builder: (context, Box<TaskItem> box, _) {
+              //     return ListView.builder(
+              //       itemCount: box.length,
+              //       itemBuilder: (context, index) {
+              //         final task = box.getAt(index)!;
+
+              //         return CheckboxListTile(
+              //           title: Text(task.title),
+              //           value: task.isDone,
+              //           onChanged: (value) {
+              //             task.isDone = value ?? false;
+              //             task.save(); // persist change
+              //           },
+              //         );
+              //       },
+              //     );
+              //   },
+              // ),
+              // ListView.builder(
+              //   padding: EdgeInsets.all(8),
+              //   itemCount: tasks.length,
+              //   itemBuilder: (context, index) {
+              //     return Card(
+              //       margin: EdgeInsets.symmetric(vertical: 4),
+              //       child: TaskItem(task: tasks[index]),
+              //     );
+              //   },
+              // ),
             ),
 
             // Input field at the bottom
@@ -55,7 +119,7 @@ class _AppState extends State<App> {
                         onSubmitted: (value) {
                           if (value.isEmpty) return;
                           setState(() {
-                            tasks.add(value);
+                            box?.add(TaskItem(title: value));
                             controller.clear();
                           });
                         },
@@ -77,39 +141,6 @@ class _AppState extends State<App> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class TaskItem extends StatefulWidget {
-  final String task;
-  const TaskItem({required this.task, super.key});
-
-  @override
-  State<TaskItem> createState() => _TaskItemState();
-}
-
-class _TaskItemState extends State<TaskItem> {
-  bool isChecked = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Checkbox(
-        value: isChecked,
-        onChanged: (value) {
-          setState(() {
-            isChecked = value!;
-          });
-        },
-        shape: CircleBorder(), // circular checkbox
-      ),
-      title: Text(
-        widget.task,
-        style: TextStyle(
-          decoration: isChecked ? TextDecoration.lineThrough : null,
         ),
       ),
     );
